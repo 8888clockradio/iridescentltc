@@ -20,7 +20,7 @@
 // Example Sketch Loop: Patching Encoder straight into Decoder Node
 // -------------------------------------------------------------------
 
-AudioAdapterLTC        ltcEncoderNode; // Generator node
+AudioAdapterLTCEncoder ltcEncoderNode; // Generator node
 AudioAdapterLTCDecoder ltcDecoderNode; // Receiver node
 
 // Directly route encoded AudioStream into Decoder AudioStream
