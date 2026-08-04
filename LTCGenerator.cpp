@@ -7,7 +7,7 @@
 //  Created by George Rosar on 8/3/26.
 //
 
-#include "LTCGenerator.h"
+#include "LTCGenerator"
 #include <string.h>
 
 LTCGenerator::LTCGenerator()
