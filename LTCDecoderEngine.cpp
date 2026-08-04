@@ -7,7 +7,7 @@
 //  Created by George Rosar on 8/3/26.
 //
 
-#include "LTCDecoderEngine.h"
+#include "LTCDecoderEngine"
 
 #include <string.h>
 
