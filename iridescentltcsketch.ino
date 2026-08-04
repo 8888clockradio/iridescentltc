@@ -1,3 +1,14 @@
+//GEORGE CHARLES ROSAR II CEO OF iridescent
+//©️2026 GEORGE C. ROSAR II
+//
+//  iridescentltcsketch.ino
+//  Audio iOS + Synth
+//
+//  Created by George Rosar on 8/3/26.
+//
+//GPL 3.0 LICENSED
+
+
 #include <Arduino.h>
 #include <Audio.h>
 #include "LTCDecoderEngine" // Your standalone library
