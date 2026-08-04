@@ -1,0 +1,107 @@
+//GEORGE CHARLES ROSAR II CEO OF iridescent
+//©️2026 GEORGE C. ROSAR II
+//
+//  LTCDecoderEngine.h
+//  Audio iOS + Synth
+//
+//  Created by George Rosar on 8/3/26.
+//
+
+#ifndef LTC_DECODER_ENGINE_H
+#define LTC_DECODER_ENGINE_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+#import <Audio.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+  #include "ltc.h"
+  #include "encoder.h"
+#ifdef __cplusplus
+}
+#endif
+// Structure to pass decoded timecode out
+struct LTCDecodedTimecode {
+    uint8_t hours;
+    uint8_t minutes;
+    uint8_t seconds;
+    uint8_t frames;
+};
+
+// Optional callback signature when a frame is read
+typedef void (*LTCTimecodeCallback)(const LTCDecodedTimecode* timecode, void* userData);
+
+class LTCDecoderEngine {
+public:
+    LTCDecoderEngine();
+    ~LTCDecoderEngine();
+
+    /**
+     * Initialize the decoder.
+     * @param sampleRate Match system sample rate (e.g., 44100.0 or 44117.647)
+     * @param fps Target FPS (e.g. 24.0, 25.0, 30.0)
+     */
+    bool begin(double sampleRate, double fps);
+
+    /**
+     * Register a callback function triggered when timecode is parsed.
+     */
+    void setCallback(LTCTimecodeCallback callback, void* userData = NULL);
+
+    /**
+     * Process 16-bit signed PCM samples from an audio stream/buffer.
+     * Call this whenever new audio blocks arrive.
+     */
+    void processSamples(const int16_t* buffer, size_t sampleCount);
+
+    /**
+     * Poll the latest decoded timecode manually.
+     * @return true if new frame was read since last check.
+     */
+    bool getLatestTimecode(LTCDecodedTimecode* outTimecode);
+
+private:
+    LTCDecoder* _decoder;
+    bool _initialized;
+    
+    LTCDecodedTimecode _lastTimecode;
+    bool _hasNewTimecode;
+
+    LTCTimecodeCallback _callback;
+    void* _userData;
+
+    void parseAvailableFrames();
+};
+// -------------------------------------------------------------------
+// Audio Stream Adapter for Decoding (Requires 1 Audio Input Stream)
+// -------------------------------------------------------------------
+class AudioAdapterLTCDecoder : public AudioStream {
+public:
+    LTCDecoderEngine decoder;
+
+    // Constructor taking 1 audio input block line
+    AudioAdapterLTCDecoder() : AudioStream(1, inputQueueArray) {}
+
+    bool begin(double fps = 25.0) {
+        return decoder.begin(AUDIO_SAMPLE_RATE_EXACT, fps);
+    }
+
+    virtual void update(void) override {
+        // Receive audio block on input channel 0
+        audio_block_t *block = receiveReadOnly(0);
+        if (!block) return;
+
+        // Process 128 PCM audio samples into libltc
+        decoder.processSamples((const int16_t*)block->data, AUDIO_BLOCK_SAMPLES);
+
+        release(block);
+    }
+
+private:
+    audio_block_t *inputQueueArray[1];
+};
+#endif // LTC_DECODER_ENGINE_H
+

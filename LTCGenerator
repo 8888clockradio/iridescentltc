@@ -1,0 +1,108 @@
+//GEORGE CHARLES ROSAR II CEO OF iridescent
+//©️2026 GEORGE C. ROSAR II
+//
+//  LTCGenerator.hh
+//  Audio iOS + Synth
+//
+//  Created by George Rosar on 8/3/26.
+//
+
+#ifndef LTC_GENERATOR_H
+#define LTC_GENERATOR_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <Arduino.h>
+#include <Audio.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+  #include "ltc.h"
+  #include "encoder.h"
+#ifdef __cplusplus
+}
+#endif
+class LTCGenerator {
+public:
+    LTCGenerator();
+    ~LTCGenerator();
+
+    /**
+     * Initializes the LTC encoder.
+     * @param sampleRate The target audio sample rate (e.g. 44100.0 or 44117.647 for Teensy)
+     * @param fps Target frame rate (e.g. 24.0, 25.0, 30.0)
+     */
+    bool begin(double sampleRate, double fps);
+
+    /**
+     * Sets the start timecode.
+     */
+    void setTimecode(uint8_t hours, uint8_t minutes, uint8_t seconds, uint8_t frames);
+
+    /**
+     * Fills a target buffer with 16-bit signed PCM audio samples.
+     * @param buffer Array where 16-bit PCM samples will be written.
+     * @param sampleCount Total number of samples requested.
+     */
+    void generateSamples(int16_t* buffer, size_t sampleCount);
+
+private:
+    LTCEncoder* _encoder;
+    bool _initialized;
+
+    // Internal intermediate ring buffer for 16-bit samples
+    int16_t _ringBuffer[1024];
+    size_t _writeIndex;
+    size_t _readIndex;
+    size_t _bufferedCount;
+
+    void encodeNextFrameToRingBuffer();
+};
+
+class AudioAdapterLTCEncoder : public AudioStream {
+public:
+    /**
+     * Engine instance exposed for external timecode adjustments/polling.
+     */
+    LTCGenerator generator;
+
+    /**
+     * Constructor. Accepts optional input block configurations.
+     * Defaults to 0 inputs (acts as a standard source/generator node).
+     */
+   AudioAdapterLTCEncoder(unsigned char ninput, audio_block_t **inputQueue)
+       : AudioStream(ninput, inputQueue), _running(false) {
+   }
+
+   virtual ~AudioAdapterLTCEncoder() {
+       _running = false;
+   }
+
+   bool begin(double fps) {
+       // AUDIO_SAMPLE_RATE_EXACT (~44117.647 Hz) is defined by AudioStream.h
+       _running = generator.begin(AUDIO_SAMPLE_RATE_EXACT, fps);
+       return _running;
+   }
+
+   virtual void update(void) override {
+       if (!_running) return;
+
+       // Allocate a 128-sample block from the Teensy memory pool
+       audio_block_t *block = allocate();
+       if (!block) return;
+
+       // Direct sample generation into the audio block's 16-bit PCM buffer
+       generator.generateSamples((int16_t *)block->data, AUDIO_BLOCK_SAMPLES);
+
+       // Transmit downstream on channel 0 and free block reference
+       transmit(block, 0);
+       release(block);
+   }
+
+private:
+    bool _running;
+};
+
+#endif // LTC_GENERATOR_H
+
